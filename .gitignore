@@ -1,1 +1,3 @@
 *.mp4
+/frame_*/
+/output_*/

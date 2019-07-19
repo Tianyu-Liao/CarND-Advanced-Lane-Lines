@@ -2,9 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4aab45f4-b7c0-4999-aea6-77a9c2fb0ee6" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/pipeline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.ipynb_checkpoints/pipeline_lane_detection-checkpoint.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/.ipynb_checkpoints/pipeline_lane_detection-checkpoint.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/camera_cal/dist_pickle.p" beforeDir="false" afterPath="$PROJECT_DIR$/camera_cal/dist_pickle.p" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/output_images/analyse_overall0.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/output_images/analyse_overall0.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/output_images/analyse_overall1.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/output_images/analyse_overall1.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/output_images/analyse_overall2.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/output_images/analyse_overall2.jpg" afterDir="false" />
@@ -13,8 +12,7 @@
       <change beforePath="$PROJECT_DIR$/output_images/analyse_overall5.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/output_images/analyse_overall5.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/output_images/analyse_overall6.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/output_images/analyse_overall6.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/output_images/analyse_overall7.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/output_images/analyse_overall7.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/output_images/undist5.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/output_images/undist5.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pipeline_lane_detection.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/pipeline_lane_detection.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/pipeline.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -23,17 +21,44 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="FileEditorManager">
-    <leaf>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/pipeline.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="121">
-              <caret line="291" column="25" lean-forward="true" selection-start-line="291" selection-start-column="25" selection-end-line="291" selection-end-column="25" />
+            <state relative-caret-position="231">
+              <caret line="541" column="40" lean-forward="true" selection-start-line="541" selection-start-column="40" selection-end-line="541" selection-end-column="40" />
               <folding>
                 <element signature="e#9#27#0" expanded="true" />
-                <element signature="e#201#331#0" />
-                <element signature="e#352#373#0" />
+                <element signature="e#22806#23494#0" />
+                <element signature="e#23558#24427#0" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/miniconda3/envs/carnd-term1/lib/python3.5/site-packages/moviepy/video/VideoClip.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="135">
+              <caret line="383" selection-start-line="383" selection-end-line="383" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$USER_HOME$/miniconda3/envs/carnd-term1/lib/python3.5/site-packages/numpy/lib/polynomial.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="90">
+              <caret line="554" selection-start-line="554" selection-end-line="554" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/try.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="90">
+              <caret line="6" column="4" selection-start-line="6" selection-end-line="6" selection-end-column="4" />
             </state>
           </provider>
         </entry>
@@ -47,23 +72,25 @@
       </list>
     </option>
   </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>left</find>
+      <find>fit_stack</find>
+      <find>.fit</find>
+      <find>text</find>
+    </findStrings>
+    <replaceStrings>
+      <replace>right</replace>
+    </replaceStrings>
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
+        <option value="$PROJECT_DIR$/try.py" />
         <option value="$PROJECT_DIR$/pipeline.py" />
-      </list>
-    </option>
-  </component>
-  <component name="ProjectConfigurationFiles">
-    <option name="files">
-      <list>
-        <option value="$PROJECT_DIR$/.idea/CarND-Advanced-Lane-Lines.iml" />
-        <option value="$PROJECT_DIR$/.idea/misc.xml" />
-        <option value="$PROJECT_DIR$/.idea/modules.xml" />
-        <option value="$PROJECT_DIR$/.idea/vcs.xml" />
       </list>
     </option>
   </component>
@@ -93,6 +120,7 @@
   </component>
   <component name="PropertiesComponent">
     <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
   </component>
   <component name="RunDashboard">
@@ -150,13 +178,36 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="try" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="CarND-Advanced-Lane-Lines" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/try.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <list>
       <item itemvalue="Python.Unnamed" />
       <item itemvalue="Python.pipeline" />
+      <item itemvalue="Python.try" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.pipeline" />
+        <item itemvalue="Python.try" />
       </list>
     </recent_temporary>
   </component>
@@ -176,20 +227,20 @@
   <component name="ToolWindowManager">
     <frame x="0" y="25" width="1368" height="743" extended-state="6" />
     <layout>
-      <window_info id="Favorites" side_tool="true" />
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.022304833" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.022304833" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
-      <window_info anchor="bottom" id="Version Control" />
-      <window_info anchor="bottom" id="Python Console" />
-      <window_info anchor="bottom" id="Terminal" />
-      <window_info anchor="bottom" id="Event Log" side_tool="true" />
+      <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.048859935" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.29967427" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.25407165" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.30781758" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="bottom" id="Version Control" order="7" />
+      <window_info anchor="bottom" id="Terminal" order="8" />
+      <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
+      <window_info anchor="bottom" id="Python Console" order="10" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
@@ -200,21 +251,20 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/pipeline.py</url>
-          <line>292</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/pipeline.py</url>
-          <line>499</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/pipeline.py</url>
-          <line>472</line>
-          <option name="timeStamp" value="4" />
+          <line>304</line>
+          <option name="timeStamp" value="12" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+  </component>
+  <component name="debuggerHistoryManager">
+    <expressions id="evaluateExpression">
+      <expression>
+        <expression-string>len(right_lane_inds)</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+    </expressions>
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/pipeline_lane_detection.ipynb">
@@ -245,21 +295,49 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$USER_HOME$/miniconda3/envs/carnd-term1/lib/python3.5/site-packages/imageio/core/request.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="71">
+          <caret line="275" column="77" selection-start-line="275" selection-start-column="77" selection-end-line="275" selection-end-column="77" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/try.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="90">
+          <caret line="6" column="4" selection-start-line="6" selection-end-line="6" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_imps/_pydev_execfile.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="255">
+          <caret line="17" selection-start-line="17" selection-end-line="17" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/miniconda3/envs/carnd-term1/lib/python3.5/site-packages/numpy/lib/polynomial.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="90">
+          <caret line="554" selection-start-line="554" selection-end-line="554" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$USER_HOME$/miniconda3/envs/carnd-term1/lib/python3.5/site-packages/moviepy/video/VideoClip.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="126">
-          <caret line="510" selection-start-line="510" selection-end-line="510" />
+        <state relative-caret-position="135">
+          <caret line="383" selection-start-line="383" selection-end-line="383" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pipeline.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="121">
-          <caret line="291" column="25" lean-forward="true" selection-start-line="291" selection-start-column="25" selection-end-line="291" selection-end-column="25" />
+        <state relative-caret-position="231">
+          <caret line="541" column="40" lean-forward="true" selection-start-line="541" selection-start-column="40" selection-end-line="541" selection-end-column="40" />
           <folding>
             <element signature="e#9#27#0" expanded="true" />
-            <element signature="e#201#331#0" />
-            <element signature="e#352#373#0" />
+            <element signature="e#22806#23494#0" />
+            <element signature="e#23558#24427#0" />
           </folding>
         </state>
       </provider>
