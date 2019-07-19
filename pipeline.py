@@ -6,7 +6,10 @@ import glob
 import matplotlib.pyplot as plt
 #%matplotlib qt
 #%matplotlib inline
+plt.interactive(True)
+
 import pickle
+import PIL
 
 def show(img,cvt=1):
     img = np.uint8(img)
@@ -80,12 +83,12 @@ def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
 
 def process_grad_thresholds(image):
     # Choose a Sobel kernel size
-    ksize = 9 # Choose a larger odd number to smooth gradient measurements
+    ksize = 7 # Choose a larger odd number to smooth gradient measurements
 
     # Apply each of the thresholding functions
-    gradx = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(30, 255))
+    gradx = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(10, 255))
     grady = abs_sobel_thresh(image, orient='y', sobel_kernel=ksize, thresh=(20, 100))
-    mag_binary = mag_thresh(image, sobel_kernel=15, mag_thresh=(30, 255))
+    mag_binary = mag_thresh(image, sobel_kernel=15, mag_thresh=(70, 255))
     dir_binary = dir_threshold(image, sobel_kernel=15, thresh=(0.7, 1.3))
 
     combined1 = np.zeros_like(dir_binary)
@@ -123,7 +126,7 @@ def process_grad_thresholds(image):
 #    show(processed_analyse)
     return processed_analyse, result
 
-def color_thresh(img, s_thresh=(170, 255), l_thresh=(170, 255)):
+def color_thresh(img, s_thresh=(90, 255), l_thresh=(170, 255), ld_thresh=(0, 100)):
     img = np.copy(img)
     # Convert to HLS color space and separate the V channel
     hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
@@ -136,20 +139,40 @@ def color_thresh(img, s_thresh=(170, 255), l_thresh=(170, 255)):
 
     l_binary = np.zeros_like(l_channel)
     l_binary[(l_channel >= l_thresh[0]) & (l_channel <= l_thresh[1])] = 1
-    return s_binary, l_binary
+
+    ld_binary = np.zeros_like(l_channel)
+    ld_binary[(l_channel >= ld_thresh[0]) & (l_channel <= ld_thresh[1])] = 1
+    add_contour(ld_binary,1,7)
+    return s_binary, l_binary, ld_binary
+
+def add_contour(img,color,thickness):
+    contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    cv2.drawContours(img, contours, -1, color, thickness)
+
+    return
 
 def combine_grad_color_thresh(img):
     analyse_grad,grad_binary=process_grad_thresholds(img)
-    s_binary, l_binary = color_thresh(img)
+    s_binary, l_binary, ld_binary = color_thresh(img)
 
-    rgb_combined = np.dstack(( np.zeros_like(grad_binary), grad_binary, s_binary)) * 255
+    grad_binary_2 = np.copy(grad_binary)
+    grad_binary_2[ld_binary ==1] = 0
+
+    rgb_combined = np.dstack(( l_binary, grad_binary_2, s_binary)) * 255
     binary_combined = np.zeros_like(grad_binary)
-    binary_combined[(grad_binary == 1) | (s_binary == 1)] = 1
+    binary_combined[(grad_binary == 1) | (s_binary == 1) | (l_binary == 1)] = 1
+    binary_combined[ld_binary ==1] = 0
 
+
+    bc_rgb = np.dstack((binary_combined,binary_combined,binary_combined))*255
     s_rgb = np.dstack((s_binary,s_binary,s_binary))*255
     l_rgb = np.dstack((l_binary,l_binary,l_binary))*255
+    ld_rgb = np.dstack((ld_binary,ld_binary,ld_binary))*255
     column = np.concatenate((s_rgb,rgb_combined),axis=1)
     analyse_grad_color = np.concatenate((analyse_grad,column),axis=0)
+    analyse_grad_color[2*img.shape[0]:3*img.shape[0],:img.shape[1],:] = np.copy(l_rgb)
+    analyse_grad_color[1*img.shape[0]:2*img.shape[0],:img.shape[1],:] = np.copy(ld_rgb)
+    analyse_grad_color[1*img.shape[0]:2*img.shape[0],img.shape[1]:2*img.shape[1],:] = np.copy(bc_rgb)
     return binary_combined, rgb_combined, analyse_grad_color
 
 def region_masking_vertices(imshape):
@@ -181,7 +204,7 @@ def process_perspective(image):
 
 def find_lane_pixels_sliding_windows(out_img,binary_warped,nonzeroy,nonzerox,side):
     # Take a histogram of the bottom half of the image
-    histogram = np.sum(binary_warped[binary_warped.shape[0]//2:,:], axis=0)
+    histogram = np.sum(binary_warped[binary_warped.shape[0]*2//3:,:], axis=0)
 
     # Find the peak of the left and right halves of the histogram
     # These will be the starting point for the left and right lines
@@ -247,6 +270,7 @@ def find_lane_pixels_sliding_windows(out_img,binary_warped,nonzeroy,nonzerox,sid
         # Avoids an error if the above is not implemented fully
         pass
 
+    #plt.imshow(out_img)
     return lane_inds, out_img
 
 def find_lane_pixels_last_fit(nonzeroy,nonzerox):
@@ -267,8 +291,6 @@ def find_lane_pixels_last_fit(nonzeroy,nonzerox):
                 right_fit[1]*nonzeroy + right_fit[2] + margin))).nonzero()[0]
 
     return left_lane_inds, right_lane_inds
-
-
 
 def polyfit(nonzerox,nonzeroy,lane_inds,ploty):
     # Extract left and right line pixel positions
@@ -309,6 +331,14 @@ def find_fits(binary_warped):
                                                                     nonzeroy, nonzerox, "right")
         lefty, leftx, left_fit, left_fitx = polyfit(nonzerox,nonzeroy,left_lane_inds,ploty)
         righty, rightx, right_fit, right_fitx = polyfit(nonzerox,nonzeroy,right_lane_inds,ploty)
+
+        Left_Lane.fit_stack = np.copy(left_fit)
+        Right_Lane.fit_stack = np.copy(right_fit)
+        left_curverad = radius_curve(left_fit, ploty)
+        right_curverad = radius_curve(right_fit, ploty)
+        Left_Lane.radius_of_curvature_stack = left_curverad
+        Right_Lane.radius_of_curvature_stack = right_curverad
+
     else:
         left_lane_inds, right_lane_inds = find_lane_pixels_last_fit(nonzeroy, nonzerox)
         # left lane
@@ -333,8 +363,11 @@ def find_fits(binary_warped):
                                                                            nonzeroy, nonzerox,"right")
         righty, rightx, right_fit, right_fitx = polyfit(nonzerox, nonzeroy, right_lane_inds,ploty)
 
-    left_curverad = radius_curve(left_fit,ploty)
-    right_curverad = radius_curve(right_fit,ploty)
+        left_curverad = radius_curve(left_fit,ploty)
+        right_curverad = radius_curve(right_fit,ploty)
+
+    Left_Lane.radius_of_curvature = left_curverad
+    Right_Lane.radius_of_curvature = right_curverad
     ifsanity, sanity_text = sanity_check(left_curverad, right_curverad, left_fitx, right_fitx)
     if ifsanity:
 #        Left_Lane.not_detected_counter = 0
@@ -344,16 +377,16 @@ def find_fits(binary_warped):
 #        Left_Lane.fitx_stack = np.copy(left_fitx)
         Right_Lane.fit_stack = np.copy(right_fit)
 #        Right_Lane.fitx_stack = np.copy(right_fitx)
-        Left_Lane.radius_of_curvature = left_curverad
-        Right_Lane.radius_of_curvature = right_curverad
+        Left_Lane.radius_of_curvature_stack = left_curverad
+        Right_Lane.radius_of_curvature_stack = right_curverad
     else:
         insanity_counter += 1
 #         left_fit = np.copy(Left_Lane.fit_stack)
 # #        left_fitx = np.copy(Left_Lane.fitx_stack)
 #         right_fit = np.copy(Right_Lane.fit_stack)
 # #        right_fitx = np.copy(Right_Lane.fitx_stack)
-#         left_curverad = Left_Lane.radius_of_curvature
-#         right_curverad = Right_Lane.radius_of_curvature
+#         left_curverad = Left_Lane.radius_of_curvature_stack
+#         right_curverad = Right_Lane.radius_of_curvature_stack
 #        Left_Lane.not_detected_counter += 1
 #        Right_Lane.not_detected_counter += 1
 
@@ -479,7 +512,8 @@ class Line():
         # self.inds_stack = [np.array([])]
         # #y
         # self.inds_stack = [np.array([])]
-
+        #radius of curvature of the line in some units
+        self.radius_of_curvature_stack = 0
 
 def sanity_check(left_curverad,right_curverad,left_fitx,rigth_fitx):
     top_dis = rigth_fitx[0]-left_fitx[0]
@@ -514,6 +548,7 @@ def process_image(img):
     cv2.putText(analyse_overall, text, (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 5, (255, 255, 255),5)
     cv2.imwrite('frame_stack/frame' + str(frame).zfill(3) + '.jpg', analyse_overall)
     frame += 1
+    plt.imshow(analyse_overall)
     return analyse_overall
 
 # class Global():
@@ -550,5 +585,5 @@ Left_Lane.fit_stack = np.array([0,0,200])
 Right_Lane.fit_stack = np.array([0,0,800])
 clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 #%time clip.write_videofile(output, audio=False)
-#clip.write_videofile(output, audio=False)
+clip.write_videofile(output, audio=False)
 #clip.write_images_sequence(output)
