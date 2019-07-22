@@ -27,13 +27,25 @@ def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
     # Calculate directional gradient
     # Apply threshold
     # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+    # h_channel = hls[:, :, 0]
+    # gray = np.copy(h_channel)
+    channel_0 = hls[:, :, 0]
+    channel_1 = hls[:, :, 1]
+    channel_2 = hls[:, :, 2]
+
+
     # Apply x or y gradient with the OpenCV Sobel() function
     # and take the absolute value
     if orient == 'x':
-        abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+        abs_sobel = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+        abs_sobel = abs_sobel & np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+        abs_sobel = abs_sobel & np.absolute(cv2.Sobel(channel_2, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
     if orient == 'y':
-        abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+        abs_sobel = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+        abs_sobel = abs_sobel & np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+        abs_sobel = abs_sobel & np.absolute(cv2.Sobel(channel_2, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
     # Rescale back to 8 bit integer
     scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
     # Create a copy and apply the threshold
@@ -86,7 +98,7 @@ def process_grad_thresholds(image):
     ksize = 9 # Choose a larger odd number to smooth gradient measurements
 
     # Apply each of the thresholding functions
-    gradx = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(10, 255))
+    gradx = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(20, 255))
     grady = abs_sobel_thresh(image, orient='y', sobel_kernel=ksize, thresh=(20, 100))
     mag_binary = mag_thresh(image, sobel_kernel=15, mag_thresh=(70, 255))
     dir_binary = dir_threshold(image, sobel_kernel=15, thresh=(0.7, 1.3))
@@ -126,12 +138,13 @@ def process_grad_thresholds(image):
 #    show(processed_analyse)
     return processed_analyse, result
 
-def color_thresh(img, s_thresh=(90, 255), l_thresh=(190, 255), ld_thresh=(0, 100)):
+def color_thresh(img, s_thresh=(80, 255), l_thresh=(180, 255), ld_thresh=(0, 100)):
     img = np.copy(img)
     # Convert to HLS color space and separate the V channel
     hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
     l_channel = hls[:,:,1]
     s_channel = hls[:,:,2]
+    h_channel = hls[:,:,0]*255/179
 
     # Threshold color channel
     s_binary = np.zeros_like(s_channel)
@@ -143,7 +156,7 @@ def color_thresh(img, s_thresh=(90, 255), l_thresh=(190, 255), ld_thresh=(0, 100
     ld_binary = np.zeros_like(l_channel)
     ld_binary[(l_channel >= ld_thresh[0]) & (l_channel <= ld_thresh[1])] = 1
     add_contour(ld_binary,1,7)
-    return s_binary, l_binary, ld_binary
+    return s_binary, l_binary, ld_binary, h_channel
 
 def add_contour(img,color,thickness):
     contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -153,17 +166,31 @@ def add_contour(img,color,thickness):
 
 def combine_grad_color_thresh(img):
     analyse_grad,grad_binary=process_grad_thresholds(img)
-    s_binary, l_binary, ld_binary = color_thresh(img)
+    s_binary, l_binary, ld_binary, h_channel = color_thresh(img)
 
     grad_binary_2 = np.copy(grad_binary)
-    grad_binary_2[ld_binary ==1] = 0
+    grad_binary_2[(ld_binary ==1)] = 0
 
-    rgb_combined = np.dstack(( l_binary, grad_binary_2, s_binary)) * 255
+    s_binary_2 = np.copy(s_binary)
+    s_binary_2[ld_binary ==1] = 0
+
+    add_contour(l_binary, 1, 7)
+    grad_l_binary = grad_binary & l_binary
+
+    s_binary_dick = np.copy(s_binary)
+    add_contour(s_binary_dick, 1, 7)
+    grad_s_binary = grad_binary & s_binary_dick
+
+#    rgb_combined = np.dstack(( grad_l_binary, grad_binary_2, s_binary_2)) * 255
+#    rgb_combined = np.dstack(( grad_s_binary, grad_l_binary, s_binary_2)) * 255
+    rgb_combined = np.dstack((np.zeros_like(grad_binary), grad_s_binary, grad_l_binary)) * 255
     binary_combined = np.zeros_like(grad_binary)
-    binary_combined[(grad_binary == 1) | (s_binary == 1) | (l_binary == 1)] = 1
-    binary_combined[ld_binary ==1] = 0
+#    binary_combined[(grad_binary_2 == 1) | (s_binary_2 == 1) | (grad_l_binary == 1) | (grad_s_binary == 1)] = 1
+#    binary_combined[(s_binary_2 == 1) | (grad_l_binary == 1) | (grad_s_binary == 1)] = 1
+    binary_combined[(grad_l_binary == 1) | (grad_s_binary == 1)] = 1
+#    binary_combined[ld_binary ==1] = 0
 
-
+    h_rgb = np.dstack((h_channel,h_channel,h_channel))*255
     bc_rgb = np.dstack((binary_combined,binary_combined,binary_combined))*255
     s_rgb = np.dstack((s_binary,s_binary,s_binary))*255
     l_rgb = np.dstack((l_binary,l_binary,l_binary))*255
@@ -171,11 +198,13 @@ def combine_grad_color_thresh(img):
     column = np.concatenate((s_rgb,rgb_combined),axis=1)
     analyse_grad_color = np.concatenate((analyse_grad,column),axis=0)
     analyse_grad_color[2*img.shape[0]:3*img.shape[0],:img.shape[1],:] = np.copy(l_rgb)
-    analyse_grad_color[1*img.shape[0]:2*img.shape[0],:img.shape[1],:] = np.copy(ld_rgb)
+    analyse_grad_color[1*img.shape[0]:2*img.shape[0],:img.shape[1],:] = np.copy(h_rgb)
     analyse_grad_color[1*img.shape[0]:2*img.shape[0],img.shape[1]:2*img.shape[1],:] = np.copy(bc_rgb)
     return binary_combined, rgb_combined, analyse_grad_color
 
 def region_masking_vertices(imshape):
+    #ken_factor is the factor of the field of view, determines how far the trapezoid region masking can see.
+    ken_factor = 0.43
     cut_y = 60
     cut_b_trapezoid = 100
     h_mod = imshape[0]*0.95-cut_y
@@ -184,23 +213,6 @@ def region_masking_vertices(imshape):
     vertices_mask= np.array([[(cut_b_trapezoid,imshape[0]-cut_y),(imshape[1]/2-a_trapezoid/2, imshape[0]-h_trapezoid), (imshape[1]/2+a_trapezoid/2, imshape[0]-h_trapezoid), (imshape[1]-cut_b_trapezoid,imshape[0]-cut_y)]], dtype=np.float32)
     vertices_mask = np.rint(vertices_mask)
     return cut_y, vertices_mask
-
-# def process_perspective(image):
-#     # to get an image from the top view perspective
-#     imshape = image.shape
-#
-#     cut_y, vertices_mask = region_masking_vertices(imshape)
-#
-#     h_new = imshape[0]*4
-#     w_new = imshape[1]*1
-#     vertices_dst= np.array([[(0,h_new),(0,0), (w_new, 0), (w_new,h_new)]], dtype=np.float32)
-#
-#     matrix_transform = cv2.getPerspectiveTransform(vertices_mask,vertices_dst)
-#     image_dst = cv2.warpPerspective(image,matrix_transform,(w_new,h_new),flags=cv2.INTER_LINEAR)
-#
-#     matrix_transform_back = cv2.getPerspectiveTransform(vertices_dst,vertices_mask)
-#
-#     return image_dst, matrix_transform_back
 
 def process_perspective(image):
     # to get an image from the top view perspective
@@ -239,18 +251,15 @@ def find_lane_pixels_sliding_windows(out_img,binary_warped,nonzeroy,nonzerox,sid
 
     # HYPERPARAMETERS
     # Choose the number of sliding windows
-    nwindows = 9
+    nwindows = 12
     # Set the width of the windows +/- margin
     margin_base = 100
     margin = margin_base
     # Set minimum number of pixels found to recenter window
-    minpix = 50
+    minpix = 300
 
     # Set height of windows - based on nwindows above and image shape
     window_height = np.int(binary_warped.shape[0]//nwindows)
-
-
-
 
     # Current positions to be updated later for each window in nwindows
     x_current = x_base
@@ -274,16 +283,28 @@ def find_lane_pixels_sliding_windows(out_img,binary_warped,nonzeroy,nonzerox,sid
         good_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
         (nonzerox >= win_x_low) &  (nonzerox < win_x_high)).nonzero()[0]
 
-        # Append these indices to the lists
-        lane_inds.append(good_inds)
-
         # If you found > minpix pixels, recenter next window on their mean position
         if len(good_inds) > minpix:
+            x_mean = np.int(np.mean(nonzerox[good_inds]))
+            win_x_low = x_mean - margin
+            win_x_high = x_mean + margin
+            # Draw the windows on the visualization image
+            cv2.rectangle(out_img, (win_x_low, win_y_low),
+                          (win_x_high, win_y_high), (255, 255, 0), 2)
+            good_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) &
+                         (nonzerox >= win_x_low) & (nonzerox < win_x_high)).nonzero()[0]
             x_current = np.int(np.mean(nonzerox[good_inds]))
+           # x_current = x_current + x_current - x_mean
+            # if frame == 1:
+            #     x_current = x_mean
+            # else:
+            #     x_current = x_mean + 1*(x_mean-x_current)
             margin = margin_base
         else:
-            margin += 30
+            margin += 20
 
+        # Append these indices to the lists
+        lane_inds.append(good_inds)
     # Concatenate the arrays of indices (previously was a list of lists of pixels)
     try:
         lane_inds = np.concatenate(lane_inds)
@@ -295,7 +316,7 @@ def find_lane_pixels_sliding_windows(out_img,binary_warped,nonzeroy,nonzerox,sid
     # Extract left and right line pixel positions
     x = nonzerox[lane_inds]
     y = nonzeroy[lane_inds]
-    return lane_inds, out_img, x, y
+    return lane_inds, out_img, x, y, histogram
 
 def find_lane_pixels_last_fit(nonzeroy,nonzerox):
     # Set the width of the windows +/- margin
@@ -334,43 +355,50 @@ def fit2x(fit,ploty):
 
 def find_fits(binary_warped):
     global insanity_counter
-    global ken_factor
-
+#    global ken_factor
+    global ndegrad
+    degrad_factor = 50
     # Create an output image to draw on and visualize the result
     out_img = np.dstack((binary_warped, binary_warped, binary_warped))
 
     # Identify the x and y positions of all nonzero pixels in the image
-    nonzero = binary_warped.nonzero()
-    nonzeroy = np.array(nonzero[0])
+    nonzero = binary_warped[ndegrad*degrad_factor:,:].nonzero()
+    nonzeroy = np.array(nonzero[0])+ndegrad*degrad_factor
     nonzerox = np.array(nonzero[1])
 
     # calculates the fits
+#    ploty = np.linspace(ndegrad*degrad_factor, binary_warped.shape[0] - 1, binary_warped.shape[0]-ndegrad*degrad_factor)
     ploty = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])
-    counter_limit = 10
-    minpix_lane = 10000
+    counter_limit = 20
+    counter_limit_2 = 30
+    minpix_lane = 5000
+
     if (frame == 1) | (insanity_counter >= counter_limit):
-        left_lane_inds, out_img, leftx, lefty = find_lane_pixels_sliding_windows(out_img, binary_warped,
+        left_lane_inds, out_img, leftx, lefty, histogram = find_lane_pixels_sliding_windows(out_img, binary_warped,
                                                                    nonzeroy, nonzerox, "left")
-        right_lane_inds, out_img, rightx, righty = find_lane_pixels_sliding_windows(out_img, binary_warped,
+        right_lane_inds, out_img, rightx, righty, _ = find_lane_pixels_sliding_windows(out_img, binary_warped,
                                                                     nonzeroy, nonzerox, "right")
 
+        midpoint = np.int(histogram.shape[0] // 2)
+        n_leftbase = np.sum(histogram[:midpoint])
+        n_rightbase = np.sum(histogram[midpoint:])
         if frame == 1:
             left_fit = polyfit(leftx, lefty)
             right_fit = polyfit(rightx, righty)
             Left_Lane.fit_stack = np.copy(left_fit)
             Right_Lane.fit_stack = np.copy(right_fit)
+            Left_Lane.fit_last = np.copy(left_fit)
+            Right_Lane.fit_last = np.copy(right_fit)
         else:
-            if len(left_lane_inds) <= minpix_lane:
+            if (len(left_lane_inds) <= minpix_lane) | (n_leftbase <= minpix_lane/2):
                 left_fit = np.copy(Left_Lane.fit_last)
             else:
                 left_fit = polyfit(leftx, lefty)
-            if len(right_lane_inds) <= minpix_lane:
+            if (len(right_lane_inds) <= minpix_lane) | (n_rightbase <= minpix_lane/2):
                 right_fit = np.copy(Right_Lane.fit_last)
             else:
                 right_fit = polyfit(rightx, righty)
 
-            left_fit = pt1_filter(left_fit, Left_Lane.fit_last)
-            right_fit = pt1_filter(right_fit, Right_Lane.fit_last)
     else:
         left_lane_inds, right_lane_inds = find_lane_pixels_last_fit(nonzeroy, nonzerox)
         # Extract left and right line pixel positions
@@ -380,22 +408,36 @@ def find_fits(binary_warped):
         righty = nonzeroy[right_lane_inds]
         # left lane
         if len(left_lane_inds) <= minpix_lane:
-            left_lane_inds, out_img, leftx, lefty = find_lane_pixels_sliding_windows(out_img, binary_warped,
+            left_lane_inds, out_img, leftx, lefty, histogram= find_lane_pixels_sliding_windows(out_img, binary_warped,
                                                                            nonzeroy, nonzerox,"left")
-        left_fit = polyfit(leftx, lefty)
+
         # right lane
         if len(right_lane_inds) <= minpix_lane:
-            right_lane_inds, out_img, rightx, righty = find_lane_pixels_sliding_windows(out_img, binary_warped,
+            right_lane_inds, out_img, rightx, righty, histogram = find_lane_pixels_sliding_windows(out_img, binary_warped,
                                                                            nonzeroy, nonzerox,"right")
-        right_fit = polyfit(rightx, righty)
+
 
         if len(left_lane_inds) <= minpix_lane:
             left_fit = np.copy(Left_Lane.fit_last)
+        else:
+            left_fit = polyfit(leftx, lefty)
+
         if len(right_lane_inds) <= minpix_lane:
             right_fit = np.copy(Right_Lane.fit_last)
+        else:
+            right_fit = polyfit(rightx, righty)
 
-        left_fit = pt1_filter(left_fit, Left_Lane.fit_last)
-        right_fit = pt1_filter(right_fit, Right_Lane.fit_last)
+        try:
+            midpoint = np.int(histogram.shape[0] // 2)
+            n_leftbase = np.sum(histogram[:midpoint])
+            n_rightbase = np.sum(histogram[midpoint:])
+            if (n_leftbase <= minpix_lane/2):
+                left_fit = np.copy(Left_Lane.fit_last)
+            if (n_rightbase <= minpix_lane/2):
+                right_fit = np.copy(Right_Lane.fit_last)
+        except UnboundLocalError:
+            # Avoids an error if the above is not implemented fully
+            pass
 
     left_fitx = fit2x(left_fit, ploty)
     right_fitx = fit2x(right_fit, ploty)
@@ -403,22 +445,37 @@ def find_fits(binary_warped):
     left_curverad = radius_curve(left_fit, ploty)
     right_curverad = radius_curve(right_fit, ploty)
 
-    ifsanity, sanity_text = sanity_check(left_curverad, right_curverad, left_fitx, right_fitx)
+    ifsanity, sanity_text, ifsanity_harder = sanity_check(left_curverad, right_curverad, left_fitx, right_fitx)
+
     if ifsanity:
         insanity_counter = 0
-        ken_factor += 0.01
-        if ken_factor > ken_factor_max:
-            ken_factor = ken_factor_max
+        if ifsanity_harder:
+            ndegrad -= 1
+            if ndegrad < 0:
+                ndegrad = 0
+        else:
+            ndegrad += np.sign(ndegrad_neutral - ndegrad)
+
+#        ken_factor += 0.01
+#        if ken_factor > ken_factor_max:
+ #           ken_factor = ken_factor_max
+
         Left_Lane.fit_stack = np.copy(left_fit)
         Right_Lane.fit_stack = np.copy(right_fit)
     else:
         insanity_counter += 1
-        ken_factor -= 0.01
-        if insanity_counter < counter_limit:
-            left_fit = np.copy(Left_Lane.fit_stack)
-            right_fit = np.copy(Right_Lane.fit_stack)
-            left_curverad = radius_curve(left_fit, ploty)
-            right_curverad = radius_curve(right_fit, ploty)
+        ndegrad += 1
+        if ndegrad > (30):
+            ndegrad = 30
+#        ken_factor -= 0.01
+#        if insanity_counter < counter_limit_2:
+        left_fit = np.copy(Left_Lane.fit_stack)
+        right_fit = np.copy(Right_Lane.fit_stack)
+
+    left_fit = pt1_filter(left_fit, Left_Lane.fit_last)
+    right_fit = pt1_filter(right_fit, Right_Lane.fit_last)
+    left_curverad = radius_curve(left_fit, ploty)
+    right_curverad = radius_curve(right_fit, ploty)
 
     Left_Lane.radius_of_curvature = left_curverad
     Right_Lane.radius_of_curvature = right_curverad
@@ -466,7 +523,13 @@ def find_fits(binary_warped):
     result = out_img
 
 #    sanity_text = sanity_text + "\nleft counter: " + str(Left_Lane.not_detected_counter) + "\nright counter: " + str(Right_Lane.not_detected_counter)
-    sanity_text = sanity_text + "\ninsanity counter: " + str(insanity_counter) + "\nframe" + str(frame) + "\nleft inds:"+str(len(left_lane_inds))+"\nright inds:"+str(len(right_lane_inds))
+    sanity_text = sanity_text + "\ninsanity counter: " + str(insanity_counter) + "\nframe" + str(frame)
+    sanity_text = sanity_text + "\nleft inds:"+str(len(left_lane_inds))+"\nright inds:"+str(len(right_lane_inds))
+    sanity_text = sanity_text + "\nndegrad:" + str(ndegrad)
+    try:
+        sanity_text = sanity_text + "\nleft base:"+str(n_leftbase)+"\nright base:"+str(n_rightbase)
+    except UnboundLocalError:
+        pass
 
     y0, dy = 100, 100
     for i, line in enumerate(sanity_text.split('\n')):
@@ -477,8 +540,7 @@ def find_fits(binary_warped):
 
 def radius_curve(fit,ploty):
     # Define conversions in x and y from pixels space to meters
-    yscale = 30 / 2880  # meters per pixel in y dimension
-    xscale = 3.7 / 800  # meters per pixel in x dimension
+
     afactor = xscale / yscale ** 2
     bfactor = xscale / yscale
     ascaled = fit[0] * afactor
@@ -491,8 +553,6 @@ def radius_curve(fit,ploty):
     # Calculation of R_curve (radius of curvature)
     radius_of_curvature = ((1 + (2 * ascaled * y_eval_scaled + bscaled) ** 2) ** 1.5) / np.absolute(
         2 * ascaled)
-
-#    rigth_fitx[-1] - left_fitx[-1]
 
     return radius_of_curvature
 
@@ -561,31 +621,59 @@ class Line():
         self.fit_last = np.array([0,0,0])
 
 def pt1_filter(u,y_last):
-    t_reaction = 0.5
+    t_reaction = 0.1
     t_sample = 0.1
     t_star = 1/(t_reaction/t_sample + 1)
     y_current = t_star*(u - y_last) + y_last
     return y_current
 
 def sanity_check(left_curverad,right_curverad,left_fitx,rigth_fitx):
+    global ratio_curv_stack, dis_diff_stack, dis_diff2_stack
+
     top_dis = rigth_fitx[0]-left_fitx[0]
     bottom_dis = rigth_fitx[-1]-left_fitx[-1]
+    middle_dis = rigth_fitx[len(rigth_fitx)//2]-left_fitx[len(left_fitx)//2]
     ratio_curv = np.maximum(left_curverad,right_curverad)/np.minimum(left_curverad,right_curverad)
     dis_diff = np.absolute(bottom_dis - top_dis)
+    dis_diff2 = np.absolute(2*middle_dis-top_dis-bottom_dis)
 
     ratio_curv_limit = 5
     dis_limit_lower = 650
-    dis_limit_upper = 900
+    dis_limit_upper = 1000
     dis_diff_limit = 400
+    dis_diff2_limit = 200
     result = 0
-    if ratio_curv<=ratio_curv_limit:
-#        if (top_dis>=dis_limit_lower) & (top_dis<=dis_limit_upper):
-        if (bottom_dis>=dis_limit_lower) & (bottom_dis<=dis_limit_upper):
-            if dis_diff<=dis_diff_limit:
-                result = 1
+    if dis_diff2<=dis_diff2_limit:
+        if ratio_curv<=ratio_curv_limit:
+    #        if (top_dis>=dis_limit_lower) & (top_dis<=dis_limit_upper):
+            if (bottom_dis>=dis_limit_lower) & (bottom_dis<=dis_limit_upper):
+                if dis_diff<=dis_diff_limit:
+                    result = 1
 
-    text = "sanity: " + str(result) + "\nratio_curv=" + str(np.rint(ratio_curv)) + "\ntop_dis=" + str(np.rint(top_dis)) + "\nbottom_dis=" + str(np.rint(bottom_dis)) +"\ndis_diff="+ str(np.rint(dis_diff))
-    return result, text
+    #harder check
+    ratio_curv_limit = ratio_curv_limit / 2
+    dis_limit_lower = dis_limit_lower
+    dis_limit_upper = dis_limit_upper
+    dis_diff_limit = dis_diff_limit / 2
+    dis_diff2_limit = dis_diff2_limit / 2
+    result_harder = 0
+    if (ratio_curv<=ratio_curv_stack)&(dis_diff<=dis_diff_stack)&(dis_diff2<=dis_diff2_stack):
+        if dis_diff2 <= dis_diff2_limit:
+            if ratio_curv <= ratio_curv_limit:
+                #        if (top_dis>=dis_limit_lower) & (top_dis<=dis_limit_upper):
+                if (bottom_dis >= dis_limit_lower) & (bottom_dis <= dis_limit_upper):
+                    if dis_diff <= dis_diff_limit:
+                        result_harder = 1
+
+    ratio_curv_stack = ratio_curv
+    dis_diff_stack = dis_diff
+    dis_diff2_stack = dis_diff2
+
+    text = "sanity: " + str(result) + "sanity_h: " + str(result_harder) + "\nratio_curv=" + str(np.rint(ratio_curv)) + "\ntop_dis=" + str(np.rint(top_dis))
+    text = text + "\nbottom_dis=" + str(np.rint(bottom_dis)) + "\ndis_diff=" + str(np.rint(dis_diff))
+    text = text + "\ndis_diff2=" + str(np.rint(dis_diff2))
+
+    return result, text, result_harder
 
 def process_image(img):
     global frame
@@ -596,9 +684,11 @@ def process_image(img):
     unwarped = unwarp(out_img,ploty,left_fitx,right_fitx,matrix_transform_back,img)
     analyse_grad_color[:img.shape[0],img.shape[1]:2*img.shape[1],:] = np.copy(unwarped)
     analyse_overall = np.concatenate((analyse_grad_color,perspec_rgb,out_img),axis=1)
-    text = str(np.int32(Left_Lane.radius_of_curvature)) + 'm  ' + str(np.int32(Right_Lane.radius_of_curvature)) + 'm'
+    offset = ((right_fitx[-1] + left_fitx[-1])/2-out_img.shape[1]//2)*xscale*100
+    text = str(np.int32(Left_Lane.radius_of_curvature)) + 'm  ' + str(np.int32(Right_Lane.radius_of_curvature)) + 'm  '
+    text = text + str(np.int16(offset)) + 'cm'
     cv2.putText(analyse_overall, text, (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 5, (255, 255, 255),5)
-    cv2.imwrite('frame_stack/frame' + str(frame).zfill(3) + '.jpg', analyse_overall)
+    plt.imsave('frame_' + video.replace('.mp4','') + '/frame_' + str(frame).zfill(3) + '.png', analyse_overall)
     frame += 1
 #    plt.imshow(analyse_overall)
     return analyse_overall
@@ -608,11 +698,22 @@ def process_image(img):
 #         self.frame = 1
 #         self.insanity_counter = 0
 
+yscale = 30 / 2880  # meters per pixel in y dimension
+xscale = 3.7 / 800  # meters per pixel in x dimension
+##ken_factor is the factor of the field of view, determines how far the trapezoid region masking can see.
+#ken_factor_max = 0.43
+#ken_factor = ken_factor_max
+
+# Number of windows to spare, to shorten the field of view, aka for degradation.
+ndegrad_neutral =20
+ndegrad = ndegrad_neutral
+
+
 frame = 1
 insanity_counter = 0
-#ken_factor is the factor of the field of view, determines how far the trapezoid region masking can see.
-ken_factor_max = 0.43
-ken_factor = ken_factor_max
+ratio_curv_stack = 1
+dis_diff_stack = 0
+dis_diff2_stack = 0
 
 # images = glob.glob('output_images/undist*.jpg')
 # for idx,fname in enumerate(images):
@@ -629,6 +730,11 @@ ken_factor = ken_factor_max
 #     cv2.imwrite('output_images/analyse_overall'+str(idx)+'.jpg',analyse_overall)
 
 from moviepy.editor import VideoFileClip
+frame = 1
+insanity_counter = 0
+ratio_curv_stack = 1
+dis_diff_stack = 0
+dis_diff2_stack = 0
 video = 'challenge_video.mp4'
 output = 'out_put_' + video
 #output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
@@ -641,3 +747,38 @@ clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 #%time clip.write_videofile(output, audio=False)
 clip.write_videofile(output, audio=False)
 #clip.write_images_sequence(output)
+
+from moviepy.editor import VideoFileClip
+frame = 1
+insanity_counter = 0
+ratio_curv_stack = 1
+dis_diff_stack = 0
+dis_diff2_stack = 0
+video = 'harder_challenge_video.mp4'
+output = 'out_put_' + video
+#output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
+clip1 = VideoFileClip(video)
+Left_Lane = Line()
+Right_Lane = Line()
+Left_Lane.fit_stack = np.array([0,0,200])
+Right_Lane.fit_stack = np.array([0,0,800])
+clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
+#%time clip.write_videofile(output, audio=False)
+clip.write_videofile(output, audio=False)
+#clip.write_images_sequence(output)
+
+
+
+# from moviepy.editor import VideoFileClip
+# video = 'project_video.mp4'
+# output = 'out_put_' + video
+# #output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
+# clip1 = VideoFileClip(video)
+# Left_Lane = Line()
+# Right_Lane = Line()
+# Left_Lane.fit_stack = np.array([0,0,200])
+# Right_Lane.fit_stack = np.array([0,0,800])
+# clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
+# #%time clip.write_videofile(output, audio=False)
+# clip.write_videofile(output, audio=False)
+# #clip.write_images_sequence(output)
