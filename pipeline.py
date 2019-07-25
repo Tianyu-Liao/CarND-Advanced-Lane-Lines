@@ -213,8 +213,8 @@ def find_lane_pixels_last_fit(nonzeroy,nonzerox):
     # Set the width of the windows +/- margin
     margin = 100
 
-    left_fit = np.copy(Left_Lane.fit_stack)
-    right_fit = np.copy(Right_Lane.fit_stack)
+    left_fit = np.copy(Left_Lane.fit_last)
+    right_fit = np.copy(Right_Lane.fit_last)
     left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy +
                 left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) +
                 left_fit[1]*nonzeroy + left_fit[2] + margin))).nonzero()[0]
@@ -328,15 +328,7 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
     left_curverad, left_radius_raw = radius_curve(left_fit, ploty)
     right_curverad, right_radius_raw = radius_curve(right_fit, ploty)
 
-    n_leftbase = np.sum(lefty >= (binary_warped.shape[0] * 3 // 4))
-    n_rightbase = np.sum(righty >= (binary_warped.shape[0] * 3 // 4))
-    factor = 0.3*(1 / 4) / (1 - ploty[0] / binary_warped.shape[0])
-    if n_leftbase <= (len(left_lane_inds) * factor):
-        left_fit = np.copy(Left_Lane.fit_last)
-    if n_rightbase <= (len(right_lane_inds) * factor):
-        right_fit = np.copy(Right_Lane.fit_last)
-
-    ifsanity, ifsanity_harder = sanity_check(left_curverad, right_curverad, left_fitx, right_fitx,len(left_lane_inds),len(right_lane_inds))
+    ifsanity, ifsanity_harder = sanity_check(left_curverad, right_curverad, left_fitx, right_fitx,len(left_lane_inds),len(right_lane_inds),binary_warped,ploty,lefty,righty)
 
     if ifsanity:
         insanity_counter = 0
@@ -397,21 +389,23 @@ def radius_curve(fit,ploty):
 
     return radius_of_curvature, radius_raw
 
-def unwarp(warped,ploty,left_fitx,right_fitx,Minv,image):
+def unwarp(ploty,left_fitx,right_fitx,Minv,image):
     # Create an image to draw the lines on
-    warp_zero = np.dstack((warped, warped, warped)).astype(np.uint8)*0
+    image_zero = image*0
 
     # Recast the x and y points into usable format for cv2.fillPoly()
-    pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
-    pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
-    pts = np.concatenate((pts_left,pts_right),axis=1)
+    # pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+    # pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+    pts_left = np.stack((left_fitx, ploty),axis = 1)
+    pts_right = np.stack((right_fitx, ploty),axis = 1)[-1::-1]
+    pts = np.concatenate((pts_left,pts_right),axis=0).astype(float)
+    pts = np.array([pts])
 
-    cv2.fillPoly(warp_zero, np.int_([pts]), [0,255, 0])
+    pts_warp = cv2.perspectiveTransform(pts, Minv)
+    cv2.fillPoly(image_zero, np.int_(pts_warp), [0,255, 0])
 
-    # Warp the blank back to original image space using inverse perspective matrix (Minv)
-    newwarp = cv2.warpPerspective(warp_zero, Minv, (image.shape[1], image.shape[0]))
     # Combine the result with the original image
-    result = cv2.addWeighted(image, 1, newwarp, 0.3, 0)
+    result = cv2.addWeighted(image, 1, image_zero, 0.3, 0)
     return result
 
 # Define a class to receive the characteristics of each line detection
@@ -430,7 +424,7 @@ def pt1_filter(u,y_last):
     y_current = t_star*(u - y_last) + y_last
     return y_current
 
-def sanity_check(left_curverad,right_curverad,left_fitx,rigth_fitx,n_leftinds,n_rightinds):
+def sanity_check(left_curverad,right_curverad,left_fitx,rigth_fitx,n_leftinds,n_rightinds,binary_warped,ploty,lefty,righty):
     top_dis = rigth_fitx[0]-left_fitx[0]
     bottom_dis = rigth_fitx[-1]-left_fitx[-1]
     middle_dis = rigth_fitx[len(rigth_fitx)//2]-left_fitx[len(left_fitx)//2]
@@ -446,12 +440,21 @@ def sanity_check(left_curverad,right_curverad,left_fitx,rigth_fitx,n_leftinds,n_
     dis_diff_limit = limit_factor / radius_curvature_raw + 400
     dis_diff2_limit = dis_diff_limit*0.75
     result = 0
-    if (n_leftinds>minpix_lane) & (n_rightinds>minpix_lane):
-        if dis_diff2<=dis_diff2_limit:
-            if ratio_curv<=ratio_curv_limit:
-                if (bottom_dis>=dis_limit_lower) & (bottom_dis<=dis_limit_upper):
-                    if dis_diff<=dis_diff_limit:
-                        result = 1
+    if top_dis >= 100:
+        if (n_leftinds>minpix_lane) & (n_rightinds>minpix_lane):
+            if dis_diff2<=dis_diff2_limit:
+                if ratio_curv<=ratio_curv_limit:
+                    if (bottom_dis>=dis_limit_lower) & (bottom_dis<=dis_limit_upper):
+                        if dis_diff<=dis_diff_limit:
+                            result = 1
+
+    n_leftbase = np.sum(lefty >= (binary_warped.shape[0] * 3 // 4))
+    n_rightbase = np.sum(righty >= (binary_warped.shape[0] * 3 // 4))
+    factor = 0.3*(1 / 4) / (1 - ploty[0] / binary_warped.shape[0])
+    if n_leftbase <= (n_leftinds * factor):
+        result = 0
+    if n_rightbase <= (n_rightinds * factor):
+        result = 0
 
     #harder check
     ratio_curv_limit = ratio_curv_limit / 2
@@ -477,7 +480,7 @@ def process_image(img):
     perspec_white, _ = process_perspective(grad_l_binary)
     perspec_yellow, _ = process_perspective(grad_s_binary)
     ploty,left_fitx,right_fitx = find_fits(perspec_bc,perspec_white,perspec_yellow)
-    unwarped = unwarp(perspec_bc,ploty,left_fitx,right_fitx,matrix_transform_back,img)
+    unwarped = unwarp(ploty,left_fitx,right_fitx,matrix_transform_back,img)
     offset = ((right_fitx[-1] + left_fitx[-1])/2-perspec_bc.shape[1]//2)*xscale*100
     text = str(np.int16((Left_Lane.radius_of_curvature+Right_Lane.radius_of_curvature)/2)) + 'm '
     text = text + str(np.int16(offset)) + 'cm'
