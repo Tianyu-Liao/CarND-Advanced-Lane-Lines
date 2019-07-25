@@ -9,38 +9,51 @@ import matplotlib.pyplot as plt
 plt.interactive(True)
 
 def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
-    # Calculate directional gradient
+    # # Calculate directional gradient
+    #
+    # channel_0 = img[:, :, 0]
+    # channel_1 = img[:, :, 1]
+    # channel_2 = img[:, :, 2]
+    #
+    #
+    # # Apply x or y gradient with the OpenCV Sobel() function
+    # # and take the absolute value
+    # if orient == 'x':
+    #     abs_sobel_0 = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+    #     abs_sobel_1 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+    #     abs_sobel_2 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+    # if orient == 'y':
+    #     abs_sobel_0 = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+    #     abs_sobel_1 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+    #     abs_sobel_2 = np.absolute(cv2.Sobel(channel_2, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+    # # Rescale back to 8 bit integer
+    # scaled_sobel_0 = np.uint8(255*abs_sobel_0/np.max(abs_sobel_0))
+    # scaled_sobel_1 = np.uint8(255*abs_sobel_1/np.max(abs_sobel_1))
+    # scaled_sobel_2 = np.uint8(255*abs_sobel_2/np.max(abs_sobel_2))
+    # # Create a copy and apply the threshold
+    # grad_binary_0 = np.zeros_like(scaled_sobel_0)
+    # grad_binary_1 = np.zeros_like(scaled_sobel_1)
+    # grad_binary_2 = np.zeros_like(scaled_sobel_2)
+    # # Here I'm using inclusive (>=, <=) thresholds, but exclusive is ok too
+    # grad_binary_0[(scaled_sobel_0 >= thresh[0]) & (scaled_sobel_0 <= thresh[1])] = 1
+    # grad_binary_1[(scaled_sobel_1 >= thresh[0]) & (scaled_sobel_1 <= thresh[1])] = 1
+    # grad_binary_2[(scaled_sobel_2 >= thresh[0]) & (scaled_sobel_2 <= thresh[1])] = 1
+    #
+    # grad_binary = np.bitwise_or(grad_binary_0,grad_binary_1,grad_binary_2)
 
-    channel_0 = img[:, :, 0]
-    channel_1 = img[:, :, 1]
-    channel_2 = img[:, :, 2]
-
-
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # Apply x or y gradient with the OpenCV Sobel() function
     # and take the absolute value
     if orient == 'x':
-        abs_sobel_0 = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
-        abs_sobel_1 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
-        abs_sobel_2 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+        abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
     if orient == 'y':
-        abs_sobel_0 = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
-        abs_sobel_1 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
-        abs_sobel_2 = np.absolute(cv2.Sobel(channel_2, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+        abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
     # Rescale back to 8 bit integer
-    scaled_sobel_0 = np.uint8(255*abs_sobel_0/np.max(abs_sobel_0))
-    scaled_sobel_1 = np.uint8(255*abs_sobel_1/np.max(abs_sobel_1))
-    scaled_sobel_2 = np.uint8(255*abs_sobel_2/np.max(abs_sobel_2))
+    scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
     # Create a copy and apply the threshold
-    grad_binary_0 = np.zeros_like(scaled_sobel_0)
-    grad_binary_1 = np.zeros_like(scaled_sobel_1)
-    grad_binary_2 = np.zeros_like(scaled_sobel_2)
+    grad_binary = np.zeros_like(scaled_sobel)
     # Here I'm using inclusive (>=, <=) thresholds, but exclusive is ok too
-    grad_binary_0[(scaled_sobel_0 >= thresh[0]) & (scaled_sobel_0 <= thresh[1])] = 1
-    grad_binary_1[(scaled_sobel_1 >= thresh[0]) & (scaled_sobel_1 <= thresh[1])] = 1
-    grad_binary_2[(scaled_sobel_2 >= thresh[0]) & (scaled_sobel_2 <= thresh[1])] = 1
-
-    grad_binary = np.bitwise_or(grad_binary_0,grad_binary_1,grad_binary_2)
-
+    grad_binary[(scaled_sobel >= thresh[0]) & (scaled_sobel <= thresh[1])] = 1
     # Return the result
     return grad_binary
 
@@ -429,8 +442,8 @@ def sanity_check(left_curverad,right_curverad,left_fitx,rigth_fitx,n_leftinds,n_
     ratio_curv_limit = 100
     dis_limit_lower = 650
     dis_limit_upper = 1000
-    limit_factor = 20000
-    dis_diff_limit = limit_factor/(np.maximum(radius_curvature_raw,3000)-3000) + 400
+    limit_factor = 1000000
+    dis_diff_limit = limit_factor / radius_curvature_raw + 400
     dis_diff2_limit = dis_diff_limit*0.75
     result = 0
     if (n_leftinds>minpix_lane) & (n_rightinds>minpix_lane):
@@ -469,7 +482,7 @@ def process_image(img):
     text = str(np.int16((Left_Lane.radius_of_curvature+Right_Lane.radius_of_curvature)/2)) + 'm '
     text = text + str(np.int16(offset)) + 'cm'
     cv2.putText(unwarped, text, (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255),5)
-    plt.imsave('frame_' + video.replace('.mp4','') + '/frame_' + str(frame).zfill(3) + '.png', unwarped)
+#    plt.imsave('frame_' + video.replace('.mp4','') + '/frame_' + str(frame).zfill(3) + '.png', unwarped)
     frame += 1
     return unwarped
 
