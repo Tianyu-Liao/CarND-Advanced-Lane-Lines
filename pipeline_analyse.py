@@ -375,7 +375,7 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
     left_curverad, left_radius_raw = radius_curve(left_fit, ploty)
     right_curverad, right_radius_raw = radius_curve(right_fit, ploty)
 
-    ifsanity, sanity_text, ifsanity_harder = sanity_check(left_curverad, right_curverad, left_fitx, right_fitx,len(left_lane_inds),len(right_lane_inds),binary_warped,ploty,lefty,righty)
+    ifsanity, sanity_text, ifsanity_harder = sanity_check(left_curverad, right_curverad, left_fitx, right_fitx,len(left_lane_inds),len(right_lane_inds))
 
     if ifsanity:
         insanity_counter = 0
@@ -394,6 +394,20 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
             ndegrad = 30
         left_fit = np.copy(Left_Lane.fit_stack)
         right_fit = np.copy(Right_Lane.fit_stack)
+
+    y_base = (binary_warped.shape[0] * 3 // 4)
+    n_leftbase = np.sum(lefty >= y_base)
+    n_rightbase = np.sum(righty >= y_base)
+    print(ploty[-1])
+    print(np.min(lefty))
+    print(np.min(righty))
+    left_base_percent =  (ploty[-1]-y_base)/(ploty[-1]-np.min(lefty))
+    right_base_percent =  (ploty[-1]-y_base)/(ploty[-1]-np.min(righty))
+    factor = 0.1
+    if n_leftbase <= (len(left_lane_inds) * factor*left_base_percent):
+        left_fit = np.copy(Left_Lane.fit_last)
+    if n_rightbase <= (len(right_lane_inds) * factor*right_base_percent):
+        right_fit = np.copy(Right_Lane.fit_last)
 
     left_fit = pt1_filter(left_fit, Left_Lane.fit_last)
     right_fit = pt1_filter(right_fit, Right_Lane.fit_last)
@@ -464,6 +478,7 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
     sanity_text = sanity_text + "\nright_r:" + str(right_radius_raw)
     sanity_text = sanity_text + "\nleft_inds_y:" + str(len(left_lane_inds_y))
     sanity_text = sanity_text + "\nright_inds_y:" + str(len(right_lane_inds_y))
+    sanity_text = sanity_text + "\nlbaseper:" + str(np.rint(n_leftbase/(len(left_lane_inds)*left_base_percent)*100)) + "\nrbaseper:" + str(np.rint(n_rightbase/(len(right_lane_inds)*right_base_percent)*100))
 
     y0, dy = 100, 100
     for i, line in enumerate(sanity_text.split('\n')):
@@ -526,7 +541,7 @@ def pt1_filter(u,y_last):
     y_current = t_star*(u - y_last) + y_last
     return y_current
 
-def sanity_check(left_curverad,right_curverad,left_fitx,right_fitx,n_leftinds,n_rightinds,binary_warped,ploty,lefty,righty):
+def sanity_check(left_curverad,right_curverad,left_fitx,right_fitx,n_leftinds,n_rightinds):
     top_dis = right_fitx[0]-left_fitx[0]
     bottom_dis = right_fitx[-1]-left_fitx[-1]
     middle_dis = right_fitx[len(right_fitx)//2]-left_fitx[len(left_fitx)//2]
@@ -552,15 +567,6 @@ def sanity_check(left_curverad,right_curverad,left_fitx,right_fitx,n_leftinds,n_
                         if dis_diff<=dis_diff_limit:
                             result = 1
 
-    n_leftbase = np.sum(lefty >= (binary_warped.shape[0] * 3 // 4))
-    n_rightbase = np.sum(righty >= (binary_warped.shape[0] * 3 // 4))
-    factor = 0.2*(1 / 4) / (1 - ploty[0] / binary_warped.shape[0])
-    if n_leftbase <= (n_leftinds * factor):
-        result = 0
-    if n_rightbase <= (n_rightinds * factor):
-        result = 0
-
-
     text_ddis = "\ndis_diff_limit=" + str(np.rint(dis_diff_limit))
 
     #harder check
@@ -581,7 +587,7 @@ def sanity_check(left_curverad,right_curverad,left_fitx,right_fitx,n_leftinds,n_
     text = "sanity: " + str(result) + "sanity_h: " + str(result_harder) + "\nratio_curv=" + str(np.rint(ratio_curv)) + "\ntop_dis=" + str(np.rint(top_dis))
     text = text + "\nbottom_dis=" + str(np.rint(bottom_dis)) + "\ndis_diff=" + str(np.rint(dis_diff))
     text = text + "\ndis_diff2=" + str(np.rint(dis_diff2))
-    text = text + text_ddis + "\ntopr:" + str(np.rint(right_fitx[0])) + "\ntopl:" + str(np.rint(left_fitx[0]))
+    text = text + text_ddis
 
     return result, text, result_harder
 
@@ -634,43 +640,43 @@ degrad_factor = 50
 #
 #     cv2.imwrite('output_images/analyse_overall'+str(idx)+'.jpg',analyse_overall)
 #
-# from moviepy.editor import VideoFileClip
-# frame = 1
-# insanity_counter = 0
-# ratio_curv_stack = 1
-# dis_diff_stack = 0
-# dis_diff2_stack = 0
-# video = 'challenge_video.mp4'
-# output = 'out_put_' + video
-# #output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
-# clip1 = VideoFileClip(video)
-# Left_Lane = Line()
-# Right_Lane = Line()
-# Left_Lane.fit_stack = np.array([0,0,200])
-# Right_Lane.fit_stack = np.array([0,0,800])
-# clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
-# #%time clip.write_videofile(output, audio=False)
-# clip.write_videofile(output, audio=False)
-# #clip.write_images_sequence(output)
-# #
-# from moviepy.editor import VideoFileClip
-# frame = 1
-# insanity_counter = 0
-# ratio_curv_stack = 1
-# dis_diff_stack = 0
-# dis_diff2_stack = 0
-# video = 'harder_challenge_video.mp4'
-# output = 'out_put_' + video
-# #output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
-# clip1 = VideoFileClip(video)
-# Left_Lane = Line()
-# Right_Lane = Line()
-# Left_Lane.fit_stack = np.array([0,0,200])
-# Right_Lane.fit_stack = np.array([0,0,800])
-# clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
-# #%time clip.write_videofile(output, audio=False)
-# clip.write_videofile(output, audio=False)
-# #clip.write_images_sequence(output)
+from moviepy.editor import VideoFileClip
+frame = 1
+insanity_counter = 0
+ratio_curv_stack = 1
+dis_diff_stack = 0
+dis_diff2_stack = 0
+video = 'challenge_video.mp4'
+output = 'out_put_' + video
+#output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
+clip1 = VideoFileClip(video)
+Left_Lane = Line()
+Right_Lane = Line()
+Left_Lane.fit_stack = np.array([0,0,200])
+Right_Lane.fit_stack = np.array([0,0,800])
+clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
+#%time clip.write_videofile(output, audio=False)
+clip.write_videofile(output, audio=False)
+#clip.write_images_sequence(output)
+#
+from moviepy.editor import VideoFileClip
+frame = 1
+insanity_counter = 0
+ratio_curv_stack = 1
+dis_diff_stack = 0
+dis_diff2_stack = 0
+video = 'harder_challenge_video.mp4'
+output = 'out_put_' + video
+#output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
+clip1 = VideoFileClip(video)
+Left_Lane = Line()
+Right_Lane = Line()
+Left_Lane.fit_stack = np.array([0,0,200])
+Right_Lane.fit_stack = np.array([0,0,800])
+clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
+#%time clip.write_videofile(output, audio=False)
+clip.write_videofile(output, audio=False)
+#clip.write_images_sequence(output)
 
 
 
