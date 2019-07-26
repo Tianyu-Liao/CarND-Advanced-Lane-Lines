@@ -9,60 +9,56 @@ import matplotlib.pyplot as plt
 plt.interactive(True)
 
 def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
-    # # Calculate directional gradient
-    #
-    # channel_0 = img[:, :, 0]
-    # channel_1 = img[:, :, 1]
-    # channel_2 = img[:, :, 2]
-    #
-    #
-    # # Apply x or y gradient with the OpenCV Sobel() function
-    # # and take the absolute value
-    # if orient == 'x':
-    #     abs_sobel_0 = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
-    #     abs_sobel_1 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
-    #     abs_sobel_2 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
-    # if orient == 'y':
-    #     abs_sobel_0 = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
-    #     abs_sobel_1 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
-    #     abs_sobel_2 = np.absolute(cv2.Sobel(channel_2, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
-    # # Rescale back to 8 bit integer
-    # scaled_sobel_0 = np.uint8(255*abs_sobel_0/np.max(abs_sobel_0))
-    # scaled_sobel_1 = np.uint8(255*abs_sobel_1/np.max(abs_sobel_1))
-    # scaled_sobel_2 = np.uint8(255*abs_sobel_2/np.max(abs_sobel_2))
-    # # Create a copy and apply the threshold
-    # grad_binary_0 = np.zeros_like(scaled_sobel_0)
-    # grad_binary_1 = np.zeros_like(scaled_sobel_1)
-    # grad_binary_2 = np.zeros_like(scaled_sobel_2)
-    # # Here I'm using inclusive (>=, <=) thresholds, but exclusive is ok too
-    # grad_binary_0[(scaled_sobel_0 >= thresh[0]) & (scaled_sobel_0 <= thresh[1])] = 1
-    # grad_binary_1[(scaled_sobel_1 >= thresh[0]) & (scaled_sobel_1 <= thresh[1])] = 1
-    # grad_binary_2[(scaled_sobel_2 >= thresh[0]) & (scaled_sobel_2 <= thresh[1])] = 1
-    #
-    # grad_binary = np.bitwise_or(grad_binary_0,grad_binary_1,grad_binary_2)
+    # Calculate directional gradient
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    channel_0 = img[:, :, 0]
+    channel_1 = img[:, :, 1]
+    channel_2 = img[:, :, 2]
+
+
     # Apply x or y gradient with the OpenCV Sobel() function
     # and take the absolute value
     if orient == 'x':
-        abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+        abs_sobel_0 = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+        abs_sobel_1 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+        abs_sobel_2 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
     if orient == 'y':
-        abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+        abs_sobel_0 = np.absolute(cv2.Sobel(channel_0, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+        abs_sobel_1 = np.absolute(cv2.Sobel(channel_1, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+        abs_sobel_2 = np.absolute(cv2.Sobel(channel_2, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
     # Rescale back to 8 bit integer
-    scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
+    scaled_sobel_0 = np.uint8(255*abs_sobel_0/np.max(abs_sobel_0))
+    scaled_sobel_1 = np.uint8(255*abs_sobel_1/np.max(abs_sobel_1))
+    scaled_sobel_2 = np.uint8(255*abs_sobel_2/np.max(abs_sobel_2))
     # Create a copy and apply the threshold
-    grad_binary = np.zeros_like(scaled_sobel)
+    grad_binary_0 = np.zeros_like(scaled_sobel_0)
+    grad_binary_1 = np.zeros_like(scaled_sobel_1)
+    grad_binary_2 = np.zeros_like(scaled_sobel_2)
     # Here I'm using inclusive (>=, <=) thresholds, but exclusive is ok too
-    grad_binary[(scaled_sobel >= thresh[0]) & (scaled_sobel <= thresh[1])] = 1
-    # Return the result
+    grad_binary_0[(scaled_sobel_0 >= thresh[0]) & (scaled_sobel_0 <= thresh[1])] = 1
+    grad_binary_1[(scaled_sobel_1 >= thresh[0]) & (scaled_sobel_1 <= thresh[1])] = 1
+    grad_binary_2[(scaled_sobel_2 >= thresh[0]) & (scaled_sobel_2 <= thresh[1])] = 1
+
+    grad_binary = np.bitwise_or(grad_binary_0,grad_binary_1,grad_binary_2)
+
+    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # # Apply x or y gradient with the OpenCV Sobel() function
+    # # and take the absolute value
+    # if orient == 'x':
+    #     abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
+    # if orient == 'y':
+    #     abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
+    # # Rescale back to 8 bit integer
+    # scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
+    # # Create a copy and apply the threshold
+    # grad_binary = np.zeros_like(scaled_sobel)
+    # # Here I'm using inclusive (>=, <=) thresholds, but exclusive is ok too
+    # grad_binary[(scaled_sobel >= thresh[0]) & (scaled_sobel <= thresh[1])] = 1
+    # # Return the result
     return grad_binary
 
 def process_grad_thresholds(image):
-    # Choose a Sobel kernel size
-    ksize = 11 # Choose a larger odd number to smooth gradient measurements
 
-    # Apply each of the thresholding functions
-    gradx = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(10, 255))
 
     result = np.copy(gradx)
 
@@ -97,7 +93,12 @@ def add_contour(img,color,thickness):
     return
 
 def combine_grad_color_thresh(img):
-    grad_binary=process_grad_thresholds(img)
+    # Choose a Sobel kernel size
+    ksize = 11  # Choose a larger odd number to smooth gradient measurements
+
+    # Apply each of the thresholding functions
+    grad_binary = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(10, 255))
+
     s_binary, l_binary = color_thresh(img)
 
     add_contour(l_binary, 1, 7)
@@ -224,9 +225,9 @@ def find_lane_pixels_last_fit(nonzeroy,nonzerox):
 
     return left_lane_inds, right_lane_inds
 
-def polyfit(x,y):
+def polyfit(x,y,weight_polyfit):
     # Fit a second order polynomial to each using `np.polyfit`
-    fit = np.polyfit(y, x, 2)
+    fit = np.polyfit(y, x, 2, w=weight_polyfit)
     return fit
 
 
@@ -274,7 +275,8 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
     #ploty with degradation of view distance
     ploty = np.linspace(ndegrad * degrad_factor, binary_warped.shape[0] - 1,
                                binary_warped.shape[0] - ndegrad * degrad_factor)
-
+    weight_polyfit = np.linspace(a_trapezoid, b_trapezoid,
+                                 binary_warped.shape[0])
     # Identify the x and y positions of all nonzero pixels in the image
     nonzero = binary_warped[ndegrad * degrad_factor:, :].nonzero()
     nonzeroy = np.array(nonzero[0]) + ndegrad * degrad_factor
