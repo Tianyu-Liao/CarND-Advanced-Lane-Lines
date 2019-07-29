@@ -76,7 +76,7 @@ def combine_grad_color_thresh(img):
 
     s_binary, l_binary = color_thresh(img)
 
-    add_contour(l_binary, 1, 2)
+    add_contour(l_binary, 1, 1)
     grad_l_binary = grad_binary & l_binary
 
     add_contour(s_binary, 1, 1)
@@ -254,7 +254,7 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
                                binary_warped.shape[0] - ndegrad * degrad_factor)
     weight_polyfit_perspec = np.linspace(a_trapezoid, b_trapezoid,
                         binary_warped.shape[0])
-    weight_polyfit_perspec = weight_polyfit_perspec*weight_polyfit_perspec
+    weight_polyfit_perspec = weight_polyfit_perspec
     # Identify the x and y positions of all nonzero pixels in the image
     nonzero = binary_warped[ndegrad * degrad_factor:, :].nonzero()
     nonzeroy = np.array(nonzero[0]) + ndegrad * degrad_factor
@@ -329,8 +329,8 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
     else:
         insanity_counter += 1
         ndegrad += 1
-        if ndegrad > (40):
-            ndegrad = 40
+        if ndegrad > (ndegrad_max):
+            ndegrad = ndegrad_max
         left_fit = np.copy(Left_Lane.fit_stack)
         right_fit = np.copy(Right_Lane.fit_stack)
 
@@ -451,7 +451,7 @@ def sanity_check(left_curverad,right_curverad,left_fitx,right_fitx):
     return result, result_harder
 
 def process_image(img):
-    global frame
+    global frame, radius_avg, radius_stack
     binary_combined, grad_l_binary, grad_s_binary = combine_grad_color_thresh(img)
     perspec_bc, matrix_transform_back,  = process_perspective(binary_combined)
     perspec_white, _ = process_perspective(grad_l_binary)
@@ -459,9 +459,30 @@ def process_image(img):
     ploty,left_fitx,right_fitx = find_fits(perspec_bc,perspec_white,perspec_yellow)
     unwarped = unwarp(ploty,left_fitx,right_fitx,matrix_transform_back,img)
     offset = ((right_fitx[-1] + left_fitx[-1])/2-perspec_bc.shape[1]//2)*xscale*100
-    text = str(np.int16((Left_Lane.radius_of_curvature+Right_Lane.radius_of_curvature)/2)) + 'm '
-    text = text + str(np.int16(offset)) + 'cm'
-    cv2.putText(unwarped, text, (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255),5)
+    offset = np.int(np.rint(offset))
+    if offset == 0:
+        dir_offset = 'middle '
+    else:
+        if offset > 0:
+            dir_offset = 'right '
+        else:
+            dir_offset = 'left '
+    radius = np.int((Left_Lane.radius_of_curvature+Right_Lane.radius_of_curvature)/2)
+    if frame == 1:
+        radius_avg = radius
+        radius_stack = 0
+    if frame % 5 == 0:
+        radius_stack += radius
+        radius_avg = radius_stack/5
+        radius_stack = 0
+    else:
+        radius_stack += radius
+
+    text = 'radius: ' + str(np.int(radius_avg)) + 'm '
+    cv2.putText(unwarped, text, (400, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255),5)
+    text = 'offset: ' + dir_offset + str(np.abs(offset)) + 'cm'
+    cv2.putText(unwarped, text, (400, 200), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 5)
+
 #    plt.imsave('frame_' + video.replace('.mp4','') + '/frame_' + str(frame).zfill(3) + '.png', unwarped)
     frame += 1
     return unwarped
@@ -470,6 +491,7 @@ def process_image(img):
 yscale = None  # meters per pixel in y dimension
 xscale = None  # meters per pixel in x dimension
 # Number of windows to spare, to shorten the field of view, aka for degradation.
+ndegrad_max = None
 ndegrad_neutral = None
 ndegrad = ndegrad_neutral
 frame = None
@@ -480,19 +502,21 @@ degrad_factor = None
 h_trapezoid = None
 a_trapezoid = None
 b_trapezoid = None
-
+radius_avg = None
+radius_stack = None
 Left_Lane = None
 Right_Lane = None
 
 def init_global():
-    global yscale, xscale, ndegrad_neutral, ndegrad, frame, insanity_counter, radius_curvature_raw, minpix_lane
+    global yscale, xscale, ndegrad_neutral, ndegrad, frame, insanity_counter, radius_curvature_raw, minpix_lane, ndegrad_max
     global degrad_factor, h_trapezoid, a_trapezoid, b_trapezoid
     global Left_Lane, Right_Lane
     #global variables
-    yscale = 30 / 2880  # meters per pixel in y dimension
-    xscale = 3.7 / 800  # meters per pixel in x dimension
+    yscale = 70 / 2880  # meters per pixel in y dimension
+    xscale = 3 / 900  # meters per pixel in x dimension
     # Number of windows to spare, to shorten the field of view, aka for degradation.
-    ndegrad_neutral =20
+    ndegrad_max = 50
+    ndegrad_neutral = 25
     ndegrad = ndegrad_neutral
     frame = 1
     insanity_counter = 0
@@ -502,7 +526,6 @@ def init_global():
     h_trapezoid = 0
     a_trapezoid = 0
     b_trapezoid = 0
-
     Left_Lane = Line()
     Right_Lane = Line()
 

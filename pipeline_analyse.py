@@ -125,7 +125,7 @@ def combine_grad_color_thresh(img):
     analyse_grad,grad_binary=process_grad_thresholds(img)
     s_binary, l_binary = color_thresh(img)
 
-    add_contour(l_binary, 1, 2)
+    add_contour(l_binary, 1, 1)
     grad_l_binary = grad_binary & l_binary
 
     add_contour(s_binary, 1, 1)
@@ -322,7 +322,7 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
                         binary_warped.shape[0] - ndegrad * degrad_factor)
     weight_polyfit_perspec = np.linspace(a_trapezoid, b_trapezoid,
                         binary_warped.shape[0])
-    weight_polyfit_perspec = weight_polyfit_perspec*weight_polyfit_perspec*weight_polyfit_perspec
+    weight_polyfit_perspec = weight_polyfit_perspec*weight_polyfit_perspec
 
     # Identify the x and y positions of all nonzero pixels in the image
     nonzero = binary_warped[ndegrad * degrad_factor:, :].nonzero()
@@ -426,8 +426,8 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
     else:
         insanity_counter += 1
         ndegrad += 1
-        if ndegrad > (30):
-            ndegrad = 30
+        if ndegrad > (40):
+            ndegrad = 40
         left_fit = np.copy(Left_Lane.fit_stack)
         right_fit = np.copy(Right_Lane.fit_stack)
 
@@ -666,7 +666,7 @@ def init_global():
     yscale = 30 / 2880  # meters per pixel in y dimension
     xscale = 3.7 / 800  # meters per pixel in x dimension
     # Number of windows to spare, to shorten the field of view, aka for degradation.
-    ndegrad_neutral =15
+    ndegrad_neutral =20
     ndegrad = ndegrad_neutral
     frame = 1
     insanity_counter = 0
@@ -680,19 +680,19 @@ def init_global():
     Left_Lane = Line()
     Right_Lane = Line()
 
-# video = "project_video"
-# #video = "harder_challenge_video"
-# video = "challenge_video"
-# images = glob.glob("origin_frame_" + video + "/frame*.jpg")
-# init_global()
-# for idx,fname in enumerate(images):
-#     img = cv2.imread(fname)
-#     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-#     analyse_overall = process_image(img)
-#     analyse_overall = cv2.cvtColor(analyse_overall, cv2.COLOR_RGB2BGR)
-#     createFolder('./' + 'output_images_' + video + '/')
-#     cv2.imwrite('output_images_' + video + '/analyse_overall'+str(idx)+'.jpg',analyse_overall)
-# exit()
+video = "project_video"
+#video = "harder_challenge_video"
+video = "challenge_video"
+images = glob.glob("origin_frame_" + video + "/frame*.jpg")
+init_global()
+for idx,fname in enumerate(images):
+    img = cv2.imread(fname)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    analyse_overall = process_image(img)
+    analyse_overall = cv2.cvtColor(analyse_overall, cv2.COLOR_RGB2BGR)
+    createFolder('./' + 'output_images_' + video + '/')
+    cv2.imwrite('output_images_' + video + '/analyse_overall'+str(idx)+'.jpg',analyse_overall)
+exit()
 
 from moviepy.editor import VideoFileClip
 init_global()

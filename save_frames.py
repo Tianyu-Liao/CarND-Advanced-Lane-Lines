@@ -10,8 +10,9 @@ def createFolder(directory):
 
 
 video = "harder_challenge_video"
+video = "challenge_video"
 frame_ind = 1
-for frame_ind in range(1,10):
+for frame_ind in range(160,180):
     cap = cv2.VideoCapture(video + ".mp4")
     total_frames = cap.get(7)
     cap.set(1,frame_ind)
