@@ -40,52 +40,27 @@ def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
     grad_binary_2[(scaled_sobel_2 >= thresh[0]) & (scaled_sobel_2 <= thresh[1])] = 1
 
     grad_binary = np.bitwise_or(grad_binary_0,grad_binary_1,grad_binary_2)
-
-    # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # # Apply x or y gradient with the OpenCV Sobel() function
-    # # and take the absolute value
-    # if orient == 'x':
-    #     abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel))
-    # if orient == 'y':
-    #     abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel))
-    # # Rescale back to 8 bit integer
-    # scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
-    # # Create a copy and apply the threshold
-    # grad_binary = np.zeros_like(scaled_sobel)
-    # # Here I'm using inclusive (>=, <=) thresholds, but exclusive is ok too
-    # grad_binary[(scaled_sobel >= thresh[0]) & (scaled_sobel <= thresh[1])] = 1
-    # # Return the result
     return grad_binary
-
-def process_grad_thresholds(image):
-
-
-    result = np.copy(gradx)
-
-    return result
 
 def color_thresh(img, s_thresh=(40, 255), l_thresh=(170, 255), ld_thresh=(0, 100)):
     img = np.copy(img)
     # Convert to HLS color space and separate the V channel
-    hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
-    l_channel = hls[:,:,1]
-    s_channel = hls[:,:,2]
-    h_channel = hls[:,:,0]
+    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+
+    v_channel = hsv[:, :, 2]
+    s_channel = hsv[:, :, 1]
+    h_channel = hsv[:, :, 0]
 
     h_binary = np.zeros_like(h_channel)
-    h_binary[(h_channel >= 20) & (h_channel <= 40)] = 1
-    # Threshold color channel
+    h_binary[(h_channel >= 20) & (h_channel <= 35)] = 1
     s_binary = np.zeros_like(s_channel)
-    s_binary[(s_channel >= s_thresh[0]) & (s_channel <= s_thresh[1])] = 1
+    s_binary[(s_channel >= 40)] = 1
     s_binary = h_binary & s_binary
 
-    s_binary2 = np.zeros_like(s_channel)
-    s_binary2[(s_channel >= 0) & (s_channel <= 20)] = 1
-    l_binary = np.zeros_like(l_channel)
-    l_binary[(l_channel >= l_thresh[0]) & (l_channel <= l_thresh[1])] = 1
-    l_binary = l_binary & s_binary2
+    v_binary = np.zeros_like(v_channel)
+    v_binary[(v_channel >= 190) & (s_channel <= 20)] = 1
 
-    return s_binary, l_binary
+    return s_binary, v_binary
 
 def add_contour(img,color,thickness):
     contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -97,14 +72,14 @@ def combine_grad_color_thresh(img):
     ksize = 11  # Choose a larger odd number to smooth gradient measurements
 
     # Apply each of the thresholding functions
-    grad_binary = abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=(10, 255))
+    grad_binary = abs_sobel_thresh(img, orient='x', sobel_kernel=ksize, thresh=(10, 255))
 
     s_binary, l_binary = color_thresh(img)
 
-    add_contour(l_binary, 1, 7)
+    add_contour(l_binary, 1, 2)
     grad_l_binary = grad_binary & l_binary
 
-    add_contour(s_binary, 1, 3)
+    add_contour(s_binary, 1, 1)
     grad_s_binary = grad_binary & s_binary
 
     binary_combined = np.zeros_like(grad_binary)
@@ -113,13 +88,15 @@ def combine_grad_color_thresh(img):
     return binary_combined, grad_l_binary, grad_s_binary
 
 def region_masking_vertices(imshape):
+    global h_trapezoid, a_trapezoid, b_trapezoid
     #ken_factor is the factor of the field of view, determines how far the trapezoid region masking can see.
-    ken_factor = 0.43
+    ken_factor = 0.45
     cut_y = 60
     cut_b_trapezoid = 100
     h_mod = imshape[0]*0.95-cut_y
     h_trapezoid = h_mod*ken_factor
     a_trapezoid = (imshape[1]-2*cut_b_trapezoid)*(h_mod/2-h_trapezoid)/(h_mod/2)
+    b_trapezoid = imshape[1]-2*cut_b_trapezoid
     vertices_mask= np.array([[(cut_b_trapezoid,imshape[0]-cut_y),(imshape[1]/2-a_trapezoid/2, imshape[0]-h_trapezoid), (imshape[1]/2+a_trapezoid/2, imshape[0]-h_trapezoid), (imshape[1]-cut_b_trapezoid,imshape[0]-cut_y)]], dtype=np.float32)
     vertices_mask = np.rint(vertices_mask)
     return cut_y, vertices_mask
@@ -162,7 +139,7 @@ def find_lane_pixels_sliding_windows(histogram, binary_warped,nonzeroy,nonzerox,
     margin_base = 100
     margin = margin_base
     # Set minimum number of pixels found to recenter window
-    minpix = 300
+    minpix = minpix_lane/20
 
     # Set height of windows - based on nwindows above and image shape
     window_height = np.int(binary_warped.shape[0]//nwindows)
@@ -275,44 +252,35 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
     #ploty with degradation of view distance
     ploty = np.linspace(ndegrad * degrad_factor, binary_warped.shape[0] - 1,
                                binary_warped.shape[0] - ndegrad * degrad_factor)
-    weight_polyfit = np.linspace(a_trapezoid, b_trapezoid,
-                                 binary_warped.shape[0])
+    weight_polyfit_perspec = np.linspace(a_trapezoid, b_trapezoid,
+                        binary_warped.shape[0])
+    weight_polyfit_perspec = weight_polyfit_perspec*weight_polyfit_perspec
     # Identify the x and y positions of all nonzero pixels in the image
     nonzero = binary_warped[ndegrad * degrad_factor:, :].nonzero()
     nonzeroy = np.array(nonzero[0]) + ndegrad * degrad_factor
     nonzerox = np.array(nonzero[1])
 
-    histogram = np.sum(binary_warped[binary_warped.shape[0] // 4:, :], axis=0)
-    left_lane_inds, right_lane_inds,leftx,lefty,rightx,righty = find_inds(perspec_yellow,histogram,nonzeroy, nonzerox,)
+    histogram = np.sum(binary_warped[binary_warped.shape[0]*3 // 4:, :], axis=0)
+    left_lane_inds, right_lane_inds,leftx,lefty,rightx,righty = find_inds(binary_warped,histogram,nonzeroy, nonzerox,)
 
-    left_lane_inds_y = np.array(perspec_yellow[lefty,leftx].nonzero()[0])
-    right_lane_inds_y = np.array(perspec_yellow[righty,rightx].nonzero()[0])
-    left_lane_inds_w = np.array(perspec_white[lefty,leftx].nonzero()[0])
-    right_lane_inds_w = np.array(perspec_white[righty,rightx].nonzero()[0])
+    left_inds_mask_yellow = perspec_yellow[lefty, leftx]
+    right_inds_mask_yellow = perspec_yellow[righty, rightx]
+    left_inds_mask_white = perspec_white[lefty, leftx]
+    right_inds_mask_white = perspec_white[righty, rightx]
+    weight_inds_left = weight_polyfit_perspec[lefty]
+    weight_inds_right = weight_polyfit_perspec[righty]
+    weight_polyfit_left = weight_inds_left*left_inds_mask_yellow + weight_inds_left*left_inds_mask_white
+    weight_polyfit_right = weight_inds_right*right_inds_mask_yellow + weight_inds_right*right_inds_mask_white
 
-    if ((len(left_lane_inds_y)>4*minpix_lane) | (len(left_lane_inds_y)>=len(left_lane_inds_w))):
-        left_lane_inds = np.copy(left_lane_inds_y)
-    else:
-        left_lane_inds = np.copy(left_lane_inds_w)
-
-    if ((len(right_lane_inds_y)>4*minpix_lane) | (len(right_lane_inds_y)>=len(right_lane_inds_w))):
-        right_lane_inds = np.copy(right_lane_inds_y)
-    else:
-        right_lane_inds = np.copy(right_lane_inds_w)
-
-    leftx = leftx[left_lane_inds]
-    lefty = lefty[left_lane_inds]
-    rightx = rightx[right_lane_inds]
-    righty = righty[right_lane_inds]
 
     if len(left_lane_inds) == 0:
         left_fit = np.copy(Left_Lane.fit_last)
     else:
-        left_fit = polyfit(leftx, lefty)
+        left_fit = polyfit(leftx, lefty, weight_polyfit_left)
     if len(right_lane_inds) == 0:
         right_fit = np.copy(Right_Lane.fit_last)
     else:
-        right_fit = polyfit(rightx, righty)
+        right_fit = polyfit(rightx, righty, weight_polyfit_right)
 
     if frame == 1:
         Left_Lane.fit_stack = np.copy(left_fit)
@@ -320,9 +288,25 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
         Left_Lane.fit_last = np.copy(left_fit)
         Right_Lane.fit_last = np.copy(right_fit)
 
-    #backup fits
-    left_fit_bak = np.copy(left_fit)
-    right_fit_bak = np.copy(right_fit)
+    if (len(left_lane_inds) < minpix_lane):
+        left_fit = np.copy(Left_Lane.fit_last)
+    if (len(right_lane_inds) < minpix_lane):
+        right_fit = np.copy(Right_Lane.fit_last)
+
+    y_base = (binary_warped.shape[0] * 3 // 4)
+    n_leftbase = np.sum(lefty >= y_base)
+    n_rightbase = np.sum(righty >= y_base)
+
+    if len(lefty)==0: lefty = np.array([0])
+    if len(righty)==0: righty = np.array([0])
+
+    left_base_percent =  (ploty[-1]-y_base)/(ploty[-1]-np.min(lefty))
+    right_base_percent =  (ploty[-1]-y_base)/(ploty[-1]-np.min(righty))
+    factor = 0.1
+    if n_leftbase <= (len(left_lane_inds) * factor*left_base_percent):
+        left_fit = np.copy(Left_Lane.fit_last)
+    if n_rightbase <= (len(right_lane_inds) * factor*right_base_percent):
+        right_fit = np.copy(Right_Lane.fit_last)
 
     left_fitx = fit2x(left_fit, ploty)
     right_fitx = fit2x(right_fit, ploty)
@@ -330,7 +314,7 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
     left_curverad, left_radius_raw = radius_curve(left_fit, ploty)
     right_curverad, right_radius_raw = radius_curve(right_fit, ploty)
 
-    ifsanity, ifsanity_harder = sanity_check(left_curverad, right_curverad, left_fitx, right_fitx,len(left_lane_inds),len(right_lane_inds),binary_warped,ploty,lefty,righty)
+    ifsanity, ifsanity_harder = sanity_check(left_curverad, right_curverad, left_fitx, right_fitx)
 
     if ifsanity:
         insanity_counter = 0
@@ -345,8 +329,8 @@ def find_fits(binary_warped,perspec_white,perspec_yellow):
     else:
         insanity_counter += 1
         ndegrad += 1
-        if ndegrad > (30):
-            ndegrad = 30
+        if ndegrad > (40):
+            ndegrad = 40
         left_fit = np.copy(Left_Lane.fit_stack)
         right_fit = np.copy(Right_Lane.fit_stack)
 
@@ -415,7 +399,7 @@ class Line():
     def __init__(self):
         self.radius_of_curvature = 0
         #distance in meters of vehicle center from the line
-        self.fit_stack = [np.array(False)]
+        self.fit_stack = np.array([0,0,0])
         #last fit for pt1_filter
         self.fit_last = np.array([0,0,0])
 
@@ -426,10 +410,10 @@ def pt1_filter(u,y_last):
     y_current = t_star*(u - y_last) + y_last
     return y_current
 
-def sanity_check(left_curverad,right_curverad,left_fitx,rigth_fitx,n_leftinds,n_rightinds,binary_warped,ploty,lefty,righty):
-    top_dis = rigth_fitx[0]-left_fitx[0]
-    bottom_dis = rigth_fitx[-1]-left_fitx[-1]
-    middle_dis = rigth_fitx[len(rigth_fitx)//2]-left_fitx[len(left_fitx)//2]
+def sanity_check(left_curverad,right_curverad,left_fitx,right_fitx):
+    top_dis = right_fitx[0]-left_fitx[0]
+    bottom_dis = right_fitx[-1]-left_fitx[-1]
+    middle_dis = right_fitx[len(right_fitx)//2]-left_fitx[len(left_fitx)//2]
     ratio_curv = np.maximum(left_curverad,right_curverad)/np.minimum(left_curverad,right_curverad)
     dis_diff = np.absolute(bottom_dis - top_dis)
     dis_diff2 = np.absolute(2*middle_dis-top_dis-bottom_dis)
@@ -443,20 +427,11 @@ def sanity_check(left_curverad,right_curverad,left_fitx,rigth_fitx,n_leftinds,n_
     dis_diff2_limit = dis_diff_limit*0.75
     result = 0
     if top_dis >= 100:
-        if (n_leftinds>minpix_lane) & (n_rightinds>minpix_lane):
-            if dis_diff2<=dis_diff2_limit:
-                if ratio_curv<=ratio_curv_limit:
-                    if (bottom_dis>=dis_limit_lower) & (bottom_dis<=dis_limit_upper):
-                        if dis_diff<=dis_diff_limit:
-                            result = 1
-
-    n_leftbase = np.sum(lefty >= (binary_warped.shape[0] * 3 // 4))
-    n_rightbase = np.sum(righty >= (binary_warped.shape[0] * 3 // 4))
-    factor = 0.3*(1 / 4) / (1 - ploty[0] / binary_warped.shape[0])
-    if n_leftbase <= (n_leftinds * factor):
-        result = 0
-    if n_rightbase <= (n_rightinds * factor):
-        result = 0
+        if dis_diff2<=dis_diff2_limit:
+            if ratio_curv<=ratio_curv_limit:
+                if (bottom_dis>=dis_limit_lower) & (bottom_dis<=dis_limit_upper):
+                    if dis_diff<=dis_diff_limit:
+                        result = 1
 
     #harder check
     ratio_curv_limit = ratio_curv_limit / 2
@@ -491,81 +466,90 @@ def process_image(img):
     frame += 1
     return unwarped
 
-#global variables
-yscale = 30 / 2880  # meters per pixel in y dimension
-xscale = 3.7 / 800  # meters per pixel in x dimension
+# global variables
+yscale = None  # meters per pixel in y dimension
+xscale = None  # meters per pixel in x dimension
 # Number of windows to spare, to shorten the field of view, aka for degradation.
-ndegrad_neutral =10
+ndegrad_neutral = None
 ndegrad = ndegrad_neutral
-frame = 1
-insanity_counter = 0
-radius_curvature_raw = 1
-minpix_lane = 5000
-degrad_factor = 50
+frame = None
+insanity_counter = None
+radius_curvature_raw = None
+minpix_lane = None
+degrad_factor = None
+h_trapezoid = None
+a_trapezoid = None
+b_trapezoid = None
 
-# images = glob.glob('output_images/undist*.jpg')
+Left_Lane = None
+Right_Lane = None
+
+def init_global():
+    global yscale, xscale, ndegrad_neutral, ndegrad, frame, insanity_counter, radius_curvature_raw, minpix_lane
+    global degrad_factor, h_trapezoid, a_trapezoid, b_trapezoid
+    global Left_Lane, Right_Lane
+    #global variables
+    yscale = 30 / 2880  # meters per pixel in y dimension
+    xscale = 3.7 / 800  # meters per pixel in x dimension
+    # Number of windows to spare, to shorten the field of view, aka for degradation.
+    ndegrad_neutral =20
+    ndegrad = ndegrad_neutral
+    frame = 1
+    insanity_counter = 0
+    radius_curvature_raw = 1
+    minpix_lane = 2000
+    degrad_factor = 50
+    h_trapezoid = 0
+    a_trapezoid = 0
+    b_trapezoid = 0
+
+    Left_Lane = Line()
+    Right_Lane = Line()
+
+
+# video = "project_video"
+# #video = "harder_challenge_video"
+# video = "challenge_video"
+# images = glob.glob("origin_frame_" + video + "/frame*.jpg")
+# init_global()
 # for idx,fname in enumerate(images):
 #     img = cv2.imread(fname)
-#     frame = 1
-#     insanity_counter = 0
-#
-#     Left_Lane = Line()
-#     Left_Lane.fit_stack = np.array([0,0,100])
-#     Right_Lane = Line()
-#     Right_Lane.fit_stack = np.array([0,0,800])
+#     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 #     analyse_overall = process_image(img)
-#
-#     cv2.imwrite('output_images/analyse_overall'+str(idx)+'.jpg',analyse_overall)
+#     analyse_overall = cv2.cvtColor(analyse_overall, cv2.COLOR_RGB2BGR)
+#     createFolder('./' + 'output_images_' + video + '/')
+#     cv2.imwrite('output_images_' + video + '/analyse_overall'+str(idx)+'.jpg',analyse_overall)
+# exit()
 
 from moviepy.editor import VideoFileClip
-frame = 1
-insanity_counter = 0
-ratio_curv_stack = 1
-dis_diff_stack = 0
-dis_diff2_stack = 0
+init_global()
 video = 'challenge_video.mp4'
 output = 'out_put_' + video
 #output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
 clip1 = VideoFileClip(video)
-Left_Lane = Line()
-Right_Lane = Line()
-Left_Lane.fit_stack = np.array([0,0,200])
-Right_Lane.fit_stack = np.array([0,0,800])
 clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 #%time clip.write_videofile(output, audio=False)
 clip.write_videofile(output, audio=False)
 #clip.write_images_sequence(output)
 #
 from moviepy.editor import VideoFileClip
-frame = 1
-insanity_counter = 0
-ratio_curv_stack = 1
-dis_diff_stack = 0
-dis_diff2_stack = 0
+init_global()
 video = 'harder_challenge_video.mp4'
 output = 'out_put_' + video
 #output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
 clip1 = VideoFileClip(video)
-Left_Lane = Line()
-Right_Lane = Line()
-Left_Lane.fit_stack = np.array([0,0,200])
-Right_Lane.fit_stack = np.array([0,0,800])
 clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 #%time clip.write_videofile(output, audio=False)
 clip.write_videofile(output, audio=False)
 #clip.write_images_sequence(output)
 
 
-
 from moviepy.editor import VideoFileClip
+init_global()
 video = 'project_video.mp4'
 output = 'out_put_' + video
 #output = 'frame_' + video.replace('.mp4','') + '/frame%03d.jpg'
 clip1 = VideoFileClip(video)
-Left_Lane = Line()
-Right_Lane = Line()
-Left_Lane.fit_stack = np.array([0,0,200])
-Right_Lane.fit_stack = np.array([0,0,800])
 clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
 #%time clip.write_videofile(output, audio=False)
 clip.write_videofile(output, audio=False)
